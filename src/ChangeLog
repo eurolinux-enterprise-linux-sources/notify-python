@@ -1,0 +1,123 @@
+==================== 0.1.1 ====================
+
+Sun Oct 08 14:06:22 EDT 2006  Christian Hammond <chipx86@chipx86.com>
+
+	* configure.ac:
+	  - Bump to version 0.1.1.
+
+Sun Oct 08 13:59:40 EDT 2006  Christian Hammond <chipx86@chipx86.com>
+
+	* src/pynotify.override:
+	* NEWS:
+	  - Patch by Johan Svedberg to fix some problems in thread-based programs.
+
+Tue Sep 05 00:01:04 PDT 2006  Christian Hammond <chipx86@chipx86.com>
+
+	* src/pynotify.defs:
+	* src/pynotify.override:
+	* AUTHORS:
+	* NEWS:
+	  - Patch by lmacken to add support for
+	    Notification.attach_to_status_icon.
+
+==================== 0.1.0 ====================
+
+Wed Apr 26 01:11:01 PDT 2006  Christian Hammond <chipx86@chipx86.com>
+
+	* src/pynotifymodule.c:
+	* tests/test-replace.py:
+	  - Add EXPIRES_NEVER and EXPIRES_DEFAULT constants.
+	  - Fix test-replace.py to set the second notification to have a default
+	    expiration.
+
+Tue Apr 25 23:23:55 PDT 2006  Christian Hammond <chipx86@chipx86.com>
+
+	* src/pynotify.override:
+	* tests/test-xy.py:
+	* tests/test-xy-stress.py:
+	  - Added a Notification.set_hint() method, which takes a variety of
+	    types.
+
+Tue Apr 25 22:53:24 PDT 2006  Christian Hammond <chipx86@chipx86.com>
+
+	* tests/Makefile.am:
+	A tests/test-replace-widget.py:
+	A tests/test-xy-stress.py:
+	  - Added two new test apps.
+
+Tue Apr 25 22:28:15 PDT 2006  Christian Hammond <chipx86@chipx86.com>
+
+	* tests/Makefile.am:
+	A tests/applet-critical.png:
+	A tests/test-default-action.py:
+	A tests/test-image.py:
+	* tests/test-multi-actions.py:
+	  - Added several test apps.
+
+Tue Apr 25 22:25:42 PDT 2006  Christian Hammond <chipx86@chipx86.com>
+
+	* src/pynotify.override:
+	  - Fix add_action() to actually work.
+
+Tue Apr 25 02:06:08 PDT 2006  Christian Hammond <chipx86@chipx86.com>
+
+	* src/pynotify.override:
+	A tests/test-multi-actions.py:
+	* tests/Makefile.am:
+	  - Get action support working. We may be leaking a reference, though,
+	    I can't really tell. Oh, and test-multi-actions cannot quit from
+	    inside an action handler. Huh.
+
+Tue Apr 25 01:47:17 PDT 2006  Christian Hammond <chipx86@chipx86.com>
+
+	* src/Makefile.am:
+	* src/pynotify.defs:
+	* tests/Makefile.am:
+	A tests/test-markup.py:
+	A tests/test-replace.py:
+	A tests/test-server-info.py:
+	A tests/test-urgency.py:
+	A tests/test-xy.py:
+	  - Add default values and null-ok to the message and icon parameters
+	    in the Notification constructor and update() method.
+	  - Add a few test cases.
+
+Tue Apr 25 01:38:08 PDT 2006  Christian Hammond <chipx86@chipx86.com>
+
+	* src/pynotify.override:
+	  - Fix get_server_caps(). It doesn't crash anymore.
+
+Tue Apr 25 01:26:43 PDT 2006  Christian Hammond <chipx86@chipx86.com>
+
+	* src/Makefile.am:
+	* src/pynotify.defs:
+	* src/pynotifymodule.c:
+	* src/pynotify.override:
+	* tests/test-basic.py:
+	  - It works!
+	  - Accept None for pynotify.Notification's icon and widget parameters,
+	    and default to None.
+
+Tue Apr 25 00:59:18 PDT 2006  Christian Hammond <chipx86@chipx86.com>
+
+	* src/Makefile.am:
+	* src/pynotify.defs:
+	* src/pynotifymodule.c:
+	* src/pynotify.override:
+	* tests/Makefile.am:
+	A tests/test-basic.py:
+	  - Wrap the remaining function.
+	  - Add a test program.
+	  - Absolutely nothing works.
+
+Mon Apr 24 23:39:55 PDT 2006  Christian Hammond <chipx86@chipx86.com>
+
+	* src/Makefile.am:
+	* src/pynotify.override:
+	  - Reference the gdk-types.defs file so we can get
+	    NotifyNotification.set_icon_from_pixbuf for free.
+
+Mon Apr 24 23:13:16 PDT 2006  Christian Hammond <chipx86@chipx86.com>
+
+	* src/pynotify.override:
+	  - Wrap notify_get_server_caps() and notify_get_server_info().

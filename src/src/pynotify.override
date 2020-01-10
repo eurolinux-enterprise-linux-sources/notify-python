@@ -1,0 +1,292 @@
+%%
+headers
+#include <Python.h>
+#include <libnotify/notify.h>
+#include "pygobject.h"
+
+typedef struct
+{
+	PyGObject *notification;
+	PyObject *callback;
+	PyObject *user_data;
+
+} ActionCbData;
+
+static PyObject *
+pygalago_wrap_str_list(GList *list)
+{
+	GList *l;
+	PyObject *item, *ret;
+
+	ret = PyList_New(0);
+
+	if (ret == NULL)
+		return NULL;
+
+	for (l = list; l != NULL; l = l->next)
+	{
+		item = PyString_FromString((char *)l->data);
+
+		if (item == NULL)
+		{
+			Py_DECREF(ret);
+			return NULL;
+		}
+
+		PyList_Append(ret, item);
+		Py_DECREF(item);
+	}
+
+	return ret;
+}
+
+static PyObject *
+pygalago_wrap_gobj_list(GList *list)
+{
+	GList *l;
+	PyObject *item, *ret;
+
+	ret = PyList_New(0);
+
+	if (ret == NULL)
+		return NULL;
+
+	for (l = list; l != NULL; l = l->next)
+	{
+		item = pygobject_new((GObject *)l->data);
+
+		if (item == NULL)
+		{
+			Py_DECREF(ret);
+			return NULL;
+		}
+
+		PyList_Append(ret, item);
+		Py_DECREF(item);
+	}
+
+	return ret;
+}
+
+GList *
+pygalago_unwrap_gobj_list(PyObject *py_items, PyTypeObject *type,
+						  gboolean *ok)
+{
+	int len, i;
+	GList *items;
+
+	*ok = TRUE;
+
+	len = PyList_Size(py_items);
+
+	for (i = 0; i < len; i++)
+	{
+		PyObject *item = PyList_GetItem(py_items, i);
+
+		if (!pygobject_check(item, type))
+		{
+			char *err = g_strdup_printf("list item not a %s", type->tp_name);
+
+			PyErr_SetString(PyExc_TypeError, err);
+
+			g_free(err);
+			g_list_free(items);
+			*ok = FALSE;
+			return NULL;
+		}
+
+		items = g_list_append(items, pygobject_get(item));
+	}
+
+	return items;
+}
+
+static void
+_notify_action_cb(NotifyNotification *n, const char *action,
+				  ActionCbData *data)
+{
+	PyGILState_STATE state;
+	PyObject *args;
+
+	state = pyg_gil_state_ensure();
+
+	if (data->user_data == Py_None)
+	{
+		args = Py_BuildValue("Os", data->notification, action);
+	}
+	else
+	{
+		args = Py_BuildValue("OsO", data->notification, action,
+							 data->user_data);
+	}
+
+	PyEval_CallObject(data->callback, args);
+	Py_DECREF(args);
+	pyg_gil_state_release(state);
+}
+
+static void
+_action_cb_data_destroy(ActionCbData *data)
+{
+	Py_DECREF(data->callback);
+	g_free(data);
+}
+%%
+modulename pynotify
+%%
+import gobject.GObject as PyGObject_Type
+import gtk.gdk.Pixbuf as PyGdkPixbuf_Type
+import gtk.Widget as PyGtkWidget_Type
+import gtk.StatusIcon as PyGtkStatusIcon_Type
+%%
+ignore-glob
+	*_get_type
+%%
+override notify_notification_add_action kwargs
+static PyObject *
+_wrap_notify_notification_add_action(PyGObject *self, PyObject *args,
+									 PyObject *kwargs)
+{
+    static char *kwlist[] = { "action", "label", "callback",
+	                          "user_data", NULL };
+	ActionCbData *action_cb_data;
+	PyGILState_STATE state;
+	PyObject *callback, *user_data = Py_None;
+	char *action;
+	char *label;
+	size_t len;
+
+	state = pyg_gil_state_ensure();
+
+	len = PyTuple_Size(args);
+
+	if (len < 3)
+	{
+		PyErr_SetString(PyExc_TypeError,
+						"NotifyNotification.add_action requires at least "
+						"3 arguments");
+		return NULL;
+	}
+
+	if (!PyArg_ParseTupleAndKeywords(args, kwargs,
+									 "ssO|O:NotifyNotification.add_action",
+									 kwlist,
+									 &action, &label, &callback, &user_data))
+	{
+		return NULL;
+	}
+
+	if (!PyCallable_Check(callback))
+	{
+		PyErr_SetString(PyExc_TypeError, "third argument must be callable");
+		return NULL;
+	}
+
+	action_cb_data = g_new0(ActionCbData, 1);
+	action_cb_data->callback = callback;
+	action_cb_data->user_data = user_data;
+	action_cb_data->notification = self;
+
+	Py_INCREF(callback);
+
+	notify_notification_add_action(NOTIFY_NOTIFICATION(self->obj),
+								   action, label,
+								   NOTIFY_ACTION_CALLBACK(_notify_action_cb),
+								   action_cb_data,
+								   (GFreeFunc)_action_cb_data_destroy);
+
+	Py_INCREF(Py_None);
+	pyg_gil_state_release(state);
+	return Py_None;
+}
+%%
+override notify_get_server_caps
+static PyObject *
+_wrap_notify_get_server_caps(PyObject *self)
+{
+	return pygalago_wrap_str_list(notify_get_server_caps());
+}
+%%
+override notify_get_server_info
+static PyObject *
+_wrap_notify_get_server_info(PyObject *self)
+{
+	char *name;
+	char *vendor;
+	char *version;
+	char *spec_version;
+	PyObject *dict;
+
+	if (!notify_get_server_info(&name, &vendor, &version, &spec_version))
+	{
+		Py_INCREF(Py_None);
+		return Py_None;
+	}
+
+	dict = PyDict_New();
+	PyDict_SetItemString(dict, "name", PyString_FromString(name));
+	PyDict_SetItemString(dict, "vendor", PyString_FromString(vendor));
+	PyDict_SetItemString(dict, "version", PyString_FromString(version));
+	PyDict_SetItemString(dict, "spec-version",
+						 PyString_FromString(spec_version));
+
+	g_free(name);
+	g_free(vendor);
+	g_free(version);
+	g_free(spec_version);
+
+	return dict;
+}
+%%
+define NotifyNotification.set_hint kwargs
+static PyObject *
+_wrap_notify_notification_set_hint(PyGObject *self, PyObject *args,
+								   PyObject *kwargs)
+{
+	static char *kwlist[] = { "name", "value", NULL };
+	char *name;
+	PyObject *value;
+
+	if (!PyArg_ParseTupleAndKeywords(args, kwargs,
+									 "sO:NotifyNotification.set_hint",
+									 kwlist, &name, &value))
+	{
+		return NULL;
+	}
+
+	if (PyString_Check(value))
+	{
+		notify_notification_set_hint_string(NOTIFY_NOTIFICATION(self->obj),
+											name, PyString_AsString(value));
+	}
+	else if (PyBool_Check(value))
+	{
+		notify_notification_set_hint_int32(NOTIFY_NOTIFICATION(self->obj),
+										   name,
+										   PyObject_IsTrue(value) ? 1 : 0);
+	}
+	else if (PyInt_Check(value))
+	{
+		notify_notification_set_hint_int32(NOTIFY_NOTIFICATION(self->obj),
+										   name, PyInt_AsLong(value));
+	}
+	else if (PyLong_Check(value))
+	{
+		notify_notification_set_hint_int32(NOTIFY_NOTIFICATION(self->obj),
+										   name, PyLong_AsLong(value));
+	}
+	else if (PyFloat_Check(value))
+	{
+		notify_notification_set_hint_double(NOTIFY_NOTIFICATION(self->obj),
+											name, PyFloat_AsDouble(value));
+	}
+	else
+	{
+		/* TODO: Display an error */
+		return NULL;
+	}
+
+	Py_INCREF(Py_None);
+	return Py_None;
+}
+// vim: ft=c

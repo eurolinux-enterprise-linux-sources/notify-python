@@ -1,0 +1,7 @@
+version 0.1.1 (8-October-2006):
+	* Added Notification.attach_to_status_icon.
+	* Fixed problems when used in a program with threads. Patch by
+	  Johan Svedberg.
+
+version 0.1.0 (26-April-2006):
+	* Initial public release.
